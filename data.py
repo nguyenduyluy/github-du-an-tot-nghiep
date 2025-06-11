@@ -12,11 +12,12 @@ class DataCleaner:
         text = re.sub(r'\s+', ' ', text)
         return text
 
-    def standardize_mainbranch(self, col='MainBranch', new_col='MainBranch_Clean'):
+    def standardize_mainbranch(self, col='MainBranch', new_col=None):
+        new_col = new_col or col
         self.df[new_col] = self.df[col].apply(self.clean_text)
         return self
 
-    def label_mainbranch(self, clean_col='MainBranch_Clean', label_col='BranchGroup'):
+    def label_mainbranch(self, clean_col='MainBranch', label_col='BranchGroup'):
         def label(row):
             txt = row.lower()
             if "not primarily" in txt or "not a developer" in txt:
@@ -28,7 +29,8 @@ class DataCleaner:
         self.df[label_col] = self.df[clean_col].apply(label)
         return self
 
-    def clean_age(self, col='Age', new_col='AgeGroup'):
+    def clean_age(self, col='Age', new_col=None):
+        new_col = new_col or col
         def extract_agegroup(age_text):
             if pd.isnull(age_text):
                 return None
@@ -37,7 +39,8 @@ class DataCleaner:
         self.df[new_col] = self.df[col].apply(extract_agegroup)
         return self
 
-    def clean_edlevel(self, col='EdLevel', new_col='EdLevel_Clean'):
+    def clean_edlevel(self, col='EdLevel', new_col=None):
+        new_col = new_col or col
         def map_education(value):
             if pd.isnull(value):
                 return "Unknown"
@@ -61,15 +64,18 @@ class DataCleaner:
         self.df[new_col] = self.df[col].apply(map_education)
         return self
 
-    def clean_country(self, col='Country', new_col='Country_Clean'):
+    def clean_country(self, col='Country', new_col=None):
+        new_col = new_col or col
         self.df[new_col] = self.df[col].apply(lambda x: self.clean_text(str(x)).title())
         return self
 
-    def clean_comptotal(self, col='CompTotal', new_col='CompTotal_Clean'):
+    def clean_comptotal(self, col='CompTotal', new_col=None):
+        new_col = new_col or col
         self.df[new_col] = pd.to_numeric(self.df[col], errors='coerce')
         return self
 
-    def clean_remotework(self, col='RemoteWork', new_col='RemoteWork_Clean'):
+    def clean_remotework(self, col='RemoteWork', new_col=None):
+        new_col = new_col or col
         def map_remote(value):
             if pd.isnull(value):
                 return "Unknown"
@@ -85,7 +91,8 @@ class DataCleaner:
         self.df[new_col] = self.df[col].apply(map_remote)
         return self
 
-    def clean_employment(self, col='Employment', new_col='EmploymentGroup'):
+    def clean_employment(self, col='Employment', new_col=None):
+        new_col = new_col or col
         def map_employment(value):
             if pd.isnull(value):
                 return "Unknown"
@@ -101,7 +108,8 @@ class DataCleaner:
         self.df[new_col] = self.df[col].apply(map_employment)
         return self
 
-    def clean_orgsize(self, col='OrgSize', new_col='OrgSizeGroup'):
+    def clean_orgsize(self, col='OrgSize', new_col=None):
+        new_col = new_col or col
         def map_orgsize(value):
             if pd.isnull(value):
                 return "Unknown"
@@ -140,8 +148,7 @@ class DataCleaner:
                 return None
 
         for col in cols:
-            new_col = col + '_Minutes'
-            self.df[new_col] = self.df[col].apply(convert_to_minutes)
+            self.df[col] = self.df[col].apply(convert_to_minutes)
         return self
 
     def clean_survey_experience(self, length_col='SurveyLength', ease_col='SurveyEase'):
@@ -155,11 +162,12 @@ class DataCleaner:
             "Neither easy nor difficult": 0,
             "Easy": 1
         }
-        self.df["SurveyLengthScore"] = self.df[length_col].map(length_map)
-        self.df["SurveyEaseScore"] = self.df[ease_col].map(ease_map)
+        self.df[length_col] = self.df[length_col].map(length_map)
+        self.df[ease_col] = self.df[ease_col].map(ease_map)
         return self
 
-    def clean_years_code_pro(self, col='YearsCodePro', new_col='YearsCodePro_Clean'):
+    def clean_years_code_pro(self, col='YearsCodePro', new_col=None):
+        new_col = new_col or col
         def parse(val):
             if pd.isnull(val):
                 return None
@@ -175,7 +183,8 @@ class DataCleaner:
         self.df[new_col] = self.df[col].apply(parse)
         return self
 
-    def clean_dev_type(self, col='DevType', new_col='DevTypeGroup'):
+    def clean_dev_type(self, col='DevType', new_col=None):
+        new_col = new_col or col
         def map_type(text):
             if pd.isnull(text):
                 return "Unknown"
@@ -201,7 +210,8 @@ class DataCleaner:
         self.df[new_col] = self.df[col].apply(map_type)
         return self
 
-    def clean_buildvsbuy(self, col='BuildvsBuy', new_col='BuildvsBuy_Short'):
+    def clean_buildvsbuy(self, col='BuildvsBuy', new_col=None):
+        new_col = new_col or col
         def map_text(x):
             if pd.isnull(x):
                 return "Unknown"
@@ -258,8 +268,7 @@ semicolon_cols = [
 ]
 
 # Xử lý
-cleaner = DataCleaner(df)
-df_clean = (cleaner
+df_clean = (DataCleaner(df)
     .standardize_mainbranch()
     .label_mainbranch()
     .clean_age()
