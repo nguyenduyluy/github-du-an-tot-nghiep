@@ -11,7 +11,7 @@ class DataCleaner:
         text = str(text).strip()
         text = re.sub(r'\s+', ' ', text)
         return text
-# Chuẩn hóa cột mainbranch
+
     def standardize_mainbranch(self, col='MainBranch', new_col='MainBranch_Clean'):
         self.df[new_col] = self.df[col].apply(self.clean_text)
         return self
@@ -27,7 +27,7 @@ class DataCleaner:
                 return "Other"
         self.df[label_col] = self.df[clean_col].apply(label)
         return self
-# Chuẩn hóa cột age
+
     def clean_age(self, col='Age', new_col='AgeGroup'):
         def extract_agegroup(age_text):
             if pd.isnull(age_text):
@@ -36,7 +36,7 @@ class DataCleaner:
             return match.group(0) if match else None
         self.df[new_col] = self.df[col].apply(extract_agegroup)
         return self
-# Chuẩn hóa cột edlevel   
+
     def clean_edlevel(self, col='EdLevel', new_col='EdLevel_Clean'):
         def map_education(value):
             if pd.isnull(value):
@@ -60,15 +60,15 @@ class DataCleaner:
                 return "Other"
         self.df[new_col] = self.df[col].apply(map_education)
         return self
-# Chuẩn hóa cột country
+
     def clean_country(self, col='Country', new_col='Country_Clean'):
         self.df[new_col] = self.df[col].apply(lambda x: self.clean_text(str(x)).title())
         return self
-# Chuẩn hóa cột comptotal
+
     def clean_comptotal(self, col='CompTotal', new_col='CompTotal_Clean'):
         self.df[new_col] = pd.to_numeric(self.df[col], errors='coerce')
         return self
-# Chuẩn hóa cột remotework
+
     def clean_remotework(self, col='RemoteWork', new_col='RemoteWork_Clean'):
         def map_remote(value):
             if pd.isnull(value):
@@ -84,7 +84,7 @@ class DataCleaner:
                 return "Other"
         self.df[new_col] = self.df[col].apply(map_remote)
         return self
-# Chuẩn hóa cột employment
+
     def clean_employment(self, col='Employment', new_col='EmploymentGroup'):
         def map_employment(value):
             if pd.isnull(value):
@@ -92,16 +92,15 @@ class DataCleaner:
             value = value.lower()
             labels = []
             if "employed" in value:
-                labels.append("Employed")
+                labels.append("Employ")
             if "student" in value:
                 labels.append("Student")
             if "independent contractor" in value or "freelancer" in value or "self-employed" in value:
                 labels.append("Freelance")
-            return " + ".join(sorted(set(labels))) if labels else "Other"
+            return "-".join(sorted(set(labels))) if labels else "Other"
         self.df[new_col] = self.df[col].apply(map_employment)
         return self
 
-# Chuẩn hóa cột orgsize
     def clean_orgsize(self, col='OrgSize', new_col='OrgSizeGroup'):
         def map_orgsize(value):
             if pd.isnull(value):
@@ -122,7 +121,6 @@ class DataCleaner:
         self.df[new_col] = self.df[col].apply(map_orgsize)
         return self
 
-# Chuẩn hóa cột time
     def clean_time_columns(self, cols=['TimeSearching', 'TimeAnswering']):
         def convert_to_minutes(value):
             if pd.isnull(value):
@@ -145,26 +143,97 @@ class DataCleaner:
             new_col = col + '_Minutes'
             self.df[new_col] = self.df[col].apply(convert_to_minutes)
         return self
-    
-# Chuẩn hóa cột survey
+
     def clean_survey_experience(self, length_col='SurveyLength', ease_col='SurveyEase'):
         length_map = {
             "Too short": -1,
             "Appropriate in length": 0,
             "Too long": 1
         }
-
         ease_map = {
             "Difficult": -1,
             "Neither easy nor difficult": 0,
             "Easy": 1
         }
-
         self.df["SurveyLengthScore"] = self.df[length_col].map(length_map)
         self.df["SurveyEaseScore"] = self.df[ease_col].map(ease_map)
-
         return self
 
+    def clean_years_code_pro(self, col='YearsCodePro', new_col='YearsCodePro_Clean'):
+        def parse(val):
+            if pd.isnull(val):
+                return None
+            val = str(val).lower()
+            if "less than" in val:
+                return 0.5
+            elif "more than" in val:
+                return 51
+            try:
+                return float(val)
+            except:
+                return None
+        self.df[new_col] = self.df[col].apply(parse)
+        return self
+
+    def clean_dev_type(self, col='DevType', new_col='DevTypeGroup'):
+        def map_type(text):
+            if pd.isnull(text):
+                return "Unknown"
+            text = text.lower()
+            if "full-stack" in text:
+                return "Full-Stack Developer"
+            elif "back-end" in text:
+                return "Back-End Developer"
+            elif "front-end" in text:
+                return "Front-End Developer"
+            elif "mobile" in text:
+                return "Mobile Developer"
+            elif "embedded" in text:
+                return "Embedded Developer"
+            elif "game" in text:
+                return "Game Developer"
+            elif "engineering manager" in text:
+                return "Manager"
+            elif "research" in text:
+                return "Researcher"
+            else:
+                return "Other"
+        self.df[new_col] = self.df[col].apply(map_type)
+        return self
+
+    def clean_buildvsbuy(self, col='BuildvsBuy', new_col='BuildvsBuy_Short'):
+        def map_text(x):
+            if pd.isnull(x):
+                return "Unknown"
+            x = x.strip().lower()
+            if x.startswith("out-of-the-box"):
+                return "Ready-to-go"
+            elif "ready-to-go but also customizable" in x:
+                return "Ready+Customizable"
+            elif "customized and needs to be engineered" in x:
+                return "Requires Customization"
+            else:
+                return "Other"
+        self.df[new_col] = self.df[col].apply(map_text)
+        return self
+
+    def clean_semicolon_columns(self, cols):
+        for col in cols:
+            self.df[col] = self.df[col].apply(
+                lambda x: '-'.join([item.strip() for item in str(x).split(';') if item.strip()])
+                if pd.notnull(x) else "")
+        return self
+
+    def clean_SOComm_text(self, col='SOComm'):
+        mapping = {
+            'Yes, definitely': 'Yes',
+            'Yes, somewhat': 'Somewhat',
+            'No, not really': 'No',
+            'No, not at all': 'Strong No',
+            'Neutral': 'Neutral'
+        }
+        self.df[col] = self.df[col].map(mapping)
+        return self
 
     def get_result(self):
         return self.df
@@ -173,27 +242,43 @@ class DataCleaner:
         return self.df[col].value_counts(dropna=False)
 
 
-# Đọc file gốc
-df = pd.read_excel("H:\\Dự án tốt nghiệp\\du_lieu.xlsx")
+# Đọc dữ liệu
+df = pd.read_excel("H:\\Dự án tốt nghiệp\\github_project\\du_lieu.xlsx")
 
-# Khởi tạo và chạy chuỗi xử lý
+# Các cột cần xử lý chuỗi phân cách
+semicolon_cols = [
+    'TechEndorse',
+    'NEWCollabToolsHaveWorkedWith',
+    'NEWCollabToolsWantToWorkWith',
+    'OpSysProfessional use',
+    'OfficeStackAsyncHaveWorkedWith',
+    'OfficeStackSyncHaveWorkedWith',
+    'AIToolCurrently Using',
+    'AIBen'
+]
+
+# Xử lý
 cleaner = DataCleaner(df)
 df_clean = (cleaner
-            .standardize_mainbranch()
-            .label_mainbranch()
-            .clean_age()
-            .clean_country()
-            .clean_comptotal()
-            .clean_edlevel()
-            .clean_remotework()
-            .clean_employment()
-            .clean_orgsize()
-            .clean_time_columns()
-            .clean_survey_experience()
-            .get_result() )
+    .standardize_mainbranch()
+    .label_mainbranch()
+    .clean_age()
+    .clean_country()
+    .clean_comptotal()
+    .clean_edlevel()
+    .clean_remotework()
+    .clean_employment()
+    .clean_orgsize()
+    .clean_time_columns()
+    .clean_survey_experience()
+    .clean_years_code_pro()
+    .clean_dev_type()
+    .clean_buildvsbuy()
+    .clean_semicolon_columns(semicolon_cols)
+    .clean_SOComm_text()
+    .get_result()
+)
 
-# Xem kết quả
-print(df_clean.head())
-
-# Xuất file sạch
+# Xuất kết quả
 df_clean.to_excel("H:\\Dự án tốt nghiệp\\du_lieu_sach_tong_hop.xlsx", index=False)
+print("Hoàn tất xử lý dữ liệu.")
