@@ -75,29 +75,26 @@ class DataCleaner:
         new_col: str | None = None,
         *,
         remove_outliers: bool = False,
-        method: str = "iqr",
         z_thresh: float = 3.0,
     ):
-        """Clean compensation column
+        """Convert compensation strings to float and optionally drop outliers via Z‑score.
 
         Parameters
         ----------
-        col / new_col
-            Source and destination columns (``new_col`` defaults to ``col``).
-        remove_outliers
-            If *True*, values outside 1.5×IQR or |Z|>z_thresh are set to NaN.
-        method
-            ``"iqr"`` (default) or ``"zscore"``.
-        z_thresh
-            Z-score threshold used when *method* is "zscore".
+        col / new_col : str
+            Source and destination columns (default keeps same name).
+        remove_outliers : bool, default False
+            If *True*, values with |Z| > ``z_thresh`` are set to ``NaN``.
+        z_thresh : float, default 3.0
+            Z‑score threshold to flag outliers.
         """
 
         new_col = new_col or col
 
+        # Convert to float ------------------------------------------------
         def to_float(x):
             if pd.isnull(x):
                 return np.nan
-            # Strip everything that is NOT 0-9, dot or minus sign:
             cleaned = re.sub(r"[^0-9.\-]", "", str(x))
             if cleaned == "":
                 return np.nan
@@ -108,18 +105,19 @@ class DataCleaner:
 
         self.df[new_col] = self.df[col].apply(to_float)
 
+        # Remove outliers via Z‑score ------------------------------------
         if remove_outliers:
             s = self.df[new_col]
-            if method.lower() == "iqr":
-                q1, q3 = s.quantile([0.25, 0.75])
-                iqr = q3 - q1
-                mask = (s < q1 - 1.5 * iqr) | (s > q3 + 1.5 * iqr)
-            else:
-                z = (s - s.mean()) / s.std(ddof=0)
-                mask = z.abs() > z_thresh
+            std = s.std(ddof=0)
+            if std == 0 or pd.isna(std):
+                # All values identical or not enough data — nothing to mask
+                return self
+            z = (s - s.mean()) / std
+            mask = z.abs() > z_thresh
             self.df.loc[mask, new_col] = np.nan
 
         return self
+
 
     def clean_remotework(self, col='RemoteWork', new_col=None):
         new_col = new_col or col
@@ -320,7 +318,7 @@ df_clean = (DataCleaner(df)
     .label_mainbranch()
     .clean_age()
     .clean_country()
-    .clean_comptotal(remove_outliers=True, method="zscore", z_thresh=3)
+    .clean_comptotal(remove_outliers=True)
     .clean_edlevel()
     .clean_remotework()
     .clean_employment()
