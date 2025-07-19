@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import numpy as np
 
 class DataCleaner:
     def __init__(self, df: pd.DataFrame):
@@ -68,55 +69,197 @@ class DataCleaner:
         new_col = new_col or col
         self.df[new_col] = self.df[col].apply(lambda x: self.clean_text(str(x)).title())
         return self
+    
+    def clean_currency(self, col='Currency', new_col=None):
+        new_col = new_col or col
+        self.df[new_col] = self.df[col].astype(str).str.strip().str[:3].str.upper()
+        return self
 
+    def convert_currency_to_usd(self, amount_col='CompTotal', currency_col='Currency', new_col='CompTotalUSD'):
+        rates = {
+        "USD": 1.00,
+        "EUR": 1.10,
+        "GBP": 1.30,
+        "INR": 0.012,
+        "VND": 0.000042,
+        "JPY": 0.0068,
+        "CNY": 0.14,
+        "CAD": 0.73,
+        "AUD": 0.66,
+        "BRL": 0.19,
+        "NOK": 0.093,
+        "SEK": 0.094,
+        "DKK": 0.15,
+        "MXN": 0.058,
+        "PEN": 0.26,
+        "LKR": 0.0031,
+        "UAH": 0.025,
+        "ILS": 0.27,
+        "PLN": 0.26,
+        "ZAR": 0.0558,
+        "CHF": 1.12,
+        "SGD": 0.74,
+        "HKD": 0.128,
+        "MYR": 0.21,
+        "THB": 0.027,
+        "IDR": 0.000063,
+        "KRW": 0.00072,
+        "EGP": 0.021,
+        "NGN": 0.00067,
+        "PKR": 0.0036,
+        "BDT": 0.0086,
+        "CZK": 0.043,
+        "HUF": 0.0027,
+        "RON": 0.22,
+        "SAR": 0.27,
+        "AED": 0.27,
+        "KWD": 3.25,
+        "BHD": 2.65,
+        "QAR": 0.27,
+        "OMR": 2.60,
+        "CLP": 0.0011,
+        "COP": 0.00026,
+        "ARS": 0.0009,
+        "UYU": 0.025,
+        "BOB": 0.14,
+        "PYG": 0.00014,
+        "DOP": 0.017,
+        "GTQ": 0.13,
+        "HNL": 0.041,
+        "NIO": 0.027,
+        "CRC": 0.0019,
+        "JMD": 0.0064,
+        "XOF": 0.0017,
+        "XAF": 0.0017,
+        "CDF": 0.00037,
+        "GHS": 0.084,
+        "TZS": 0.00039,
+        "KES": 0.0078,
+        "UGX": 0.00027,
+        "ETB": 0.017,
+        "MWK": 0.00059,
+        "ZMW": 0.046,
+        "MZN": 0.016,
+        "BWP": 0.073,
+        "MUR": 0.022,
+        "MAD": 0.10,
+        "TND": 0.32,
+        "DZD": 0.0074,
+        "LBP": 0.000009,  # biến động mạnh
+        "SYP": 0.000079,
+        "IRR": 0.000024,
+        "IQD": 0.00076,
+        "AFN": 0.012,
+        "NPR": 0.0075,
+        "MMK": 0.00047,
+        "MNT": 0.00029,
+        "KZT": 0.0022,
+        "UZS": 0.000082,
+        "AZN": 0.59,
+        "GEL": 0.36,
+        "AMD": 0.0025,
+        "ALL": 0.011,
+        "MKD": 0.017,
+        "ISK": 0.0073,
+        "BAM": 0.55,
+        "RSD": 0.0093,
+        "BYN": 0.31,
+        "RUB": 0.011,
+        "VES": 0.028,
+        "BGN": 0.56,
+        "NZD": 0.62,
+        "GBP": 1.30,
+        "BRL": 0.19,
+        "IRR": 0.000024,
+        "SEK": 0.095,
+        "PLN": 0.25,
+        "CHF": 1.12,
+        "AUD": 0.67,
+        "HKD": 0.13,
+        "TWD": 0.031,
+        "PHP": 0.018,
+        "AED": 0.27,
+        "TRY": 0.032,
+        "NZD": 0.62,
+        "IDR": 0.000065,
+        "MGA": 0.00022,
+        "BGN": 0.56,
+        "RWF": 0.00081,
+        "TTD": 0.15,
+        "JOD": 1.41,
+        "AOA": 0.0012,
+        "KGS": 0.011,
+        "MOP": 0.12,
+        "TJS": 0.091,
+        "TMT": 0.29,
+        "CUP": 0.041,
+        "BTN": 0.012,
+        "MVR": 0.065
+
+
+    }
+        self.df[currency_col] = self.df[currency_col].astype(str).str.strip().str.upper()
+        self.df[amount_col] = pd.to_numeric(self.df[amount_col], errors='coerce')
+
+        def convert(row):
+            currency = row[currency_col]
+            amount = row[amount_col]
+            rate = rates.get(currency)
+            if rate is None or pd.isnull(amount):
+                return None
+            return amount * rate
+
+        self.df[new_col] = self.df.apply(convert, axis=1)
+        return self
+
+
+    # Dùng Z-Score để xử lý ngoại lai
+    
     def clean_comptotal(
         self,
-        col: str = "CompTotal",
+        col: str = "CompTotalUSD",
         new_col: str | None = None,
-        *,
-        remove_outliers: bool = False,
-        z_thresh: float = 3.0,
-    ):
-        """Convert compensation strings to float and optionally drop outliers via Z‑score.
-
-        Parameters
-        ----------
-        col / new_col : str
-            Source and destination columns (default keeps same name).
-        remove_outliers : bool, default False
-            If *True*, values with |Z| > ``z_thresh`` are set to ``NaN``.
-        z_thresh : float, default 3.0
-            Z‑score threshold to flag outliers.
-        """
-
+        remove_outliers: bool = True,
+        replace_with_mean: bool = True,
+        min_value: float | None = None  # loại các giá trị quá nhỏ nếu muốn
+    ) -> "DataCleaner":
         new_col = new_col or col
 
-        # Convert to float ------------------------------------------------
         def to_float(x):
             if pd.isnull(x):
                 return np.nan
             cleaned = re.sub(r"[^0-9.\-]", "", str(x))
-            if cleaned == "":
-                return np.nan
             try:
-                return float(cleaned)
+                return float(cleaned) if cleaned else np.nan
             except ValueError:
                 return np.nan
 
+        # Áp dụng hàm chuyển đổi
         self.df[new_col] = self.df[col].apply(to_float)
 
-        # Remove outliers via Z‑score ------------------------------------
+        s = self.df[new_col]
+
+        # Loại bỏ giá trị nhỏ hơn ngưỡng (nếu min_value được cung cấp)
+        if min_value is not None:
+            self.df.loc[s < min_value, new_col] = np.nan
+
+        # Nếu cần loại bỏ outliers bằng IQR
         if remove_outliers:
             s = self.df[new_col]
-            std = s.std(ddof=0)
-            if std == 0 or pd.isna(std):
-                # All values identical or not enough data — nothing to mask
-                return self
-            z = (s - s.mean()) / std
-            mask = z.abs() > z_thresh
-            self.df.loc[mask, new_col] = np.nan
+            q1, q3 = s.quantile([0.25, 0.75])
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            mask = (s < lower_bound) | (s > upper_bound)
+
+            if replace_with_mean:
+                mean_value = s[~mask].mean()
+                self.df.loc[mask, new_col] = mean_value
+            else:
+                self.df.loc[mask, new_col] = np.nan
 
         return self
+
 
 
     def clean_remotework(self, col='RemoteWork', new_col=None):
@@ -318,7 +461,9 @@ df_clean = (DataCleaner(df)
     .label_mainbranch()
     .clean_age()
     .clean_country()
-    .clean_comptotal(remove_outliers=True, z_thresh=3)
+    .clean_currency()
+    .convert_currency_to_usd() 
+    .clean_comptotal(remove_outliers=True, replace_with_mean=True, min_value=100)
     .clean_edlevel()
     .clean_remotework()
     .clean_employment()
