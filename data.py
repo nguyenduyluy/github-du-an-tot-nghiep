@@ -354,23 +354,6 @@ class DataCleaner:
         self.df[ease_col] = self.df[ease_col].map(ease_map)
         return self
     
-    def clean_years_code(self, col='YearsCode', new_col=None):
-        new_col = new_col or col
-        def parse(val):
-            if pd.isnull(val):
-                return None
-            val = str(val).lower()
-            if "less than" in val:
-                return 0.5
-            elif "more than" in val:
-                return 51
-            try:
-                return float(val)
-            except:
-                return None
-        self.df[new_col] = self.df[col].apply(parse)
-        return self
-
     def clean_years_code_pro(self, col='YearsCodePro', new_col=None):
         new_col = new_col or col
         def parse(val):
@@ -438,22 +421,6 @@ class DataCleaner:
                 lambda x: '-'.join([item.strip() for item in str(x).split(';') if item.strip()])
                 if pd.notnull(x) else "")
         return self
-    
-    def clean_ai_select(self, col='AISelect', new_col=None):
-        new_col = new_col or col
-        def map_ai(value):
-            if pd.isnull(value):
-                return "No"
-            value = str(value).strip().lower()
-            if value in ["yes", "definitely", "somewhat", "a little"]:
-                return "Yes"
-            elif value in ["no", "not at all", "not really"]:
-                return "No"
-            else:
-                return "No"
-        self.df[new_col] = self.df[col].apply(map_ai)
-        return self
-
 
     def clean_SOComm_text(self, col='SOComm'):
         mapping = {
@@ -464,12 +431,6 @@ class DataCleaner:
             'Neutral': 'Neutral'
         }
         self.df[col] = self.df[col].map(mapping)
-        return self
-    def simplify_frustration_column(self, col='Frustration'):
-        self.df[col] = self.df[col].replace(['None of these', '', None, pd.NA, np.nan], 'No Frustration')
-        self.df[col] = self.df[col].apply(
-            lambda x: 'Has Frustration' if x != 'No Frustration' else 'No Frustration'
-        )
         return self
 
 
@@ -510,14 +471,10 @@ df_clean = (DataCleaner(df)
     .clean_orgsize()
     .clean_time_columns()
     .clean_survey_experience()
-    .clean_years_code()
     .clean_years_code_pro()
     .clean_dev_type()
     .clean_buildvsbuy()
-    .clean_ai_select()
-    .clean_semicolon_columns(semicolon_cols)
     .clean_SOComm_text()
-    .simplify_frustration_column()
     .get_result()
 )
 
