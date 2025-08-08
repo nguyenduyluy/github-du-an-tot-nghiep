@@ -213,7 +213,6 @@ class DataCleaner:
         return self
 
 
-    # Dùng Z-Score để xử lý ngoại lai
     
     def clean_comptotal(
         self,
@@ -354,6 +353,23 @@ class DataCleaner:
         self.df[ease_col] = self.df[ease_col].map(ease_map)
         return self
     
+    def clean_years_code(self, col='YearsCode', new_col=None):
+        new_col = new_col or col
+        def parse(val):
+            if pd.isnull(val):
+                return None
+            val = str(val).lower()
+            if "less than" in val:
+                return 0.5
+            elif "more than" in val:
+                return 51
+            try:
+                return float(val)
+            except:
+                return None
+        self.df[new_col] = self.df[col].apply(parse)
+        return self
+    
     def clean_years_code_pro(self, col='YearsCodePro', new_col=None):
         new_col = new_col or col
         def parse(val):
@@ -453,7 +469,8 @@ semicolon_cols = [
     'OfficeStackAsyncHaveWorkedWith',
     'OfficeStackSyncHaveWorkedWith',
     'AISearchDevHaveWorkedWith',
-    'Frustration'
+    'Frustration',
+    'AISelect'
 ]
 
 # Xử lý
@@ -471,13 +488,15 @@ df_clean = (DataCleaner(df)
     .clean_orgsize()
     .clean_time_columns()
     .clean_survey_experience()
+    .clean_years_code()
     .clean_years_code_pro()
     .clean_dev_type()
     .clean_buildvsbuy()
+    .clean_semicolon_columns(semicolon_cols)
     .clean_SOComm_text()
     .get_result()
 )
 
 # Xuất kết quả
-df_clean.to_excel("H:\\Dự án tốt nghiệp\\du_lieu_sach_tong_hop.xlsx", index=False)
+df_clean.to_excel("H:\\Dự án tốt nghiệp\\du_lieu_sach_tong_hop_new.xlsx", index=False)
 print("Hoàn tất xử lý dữ liệu.")
